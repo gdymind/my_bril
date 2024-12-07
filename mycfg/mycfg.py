@@ -68,7 +68,7 @@ def mycfg():
         for label, next_labels in cfg.items():
             for next_label in next_labels:
                 dot.edge(label, next_label)
-        dot.render(f"{function['name']}", view=True)
+        dot.render(f"{function['name']}", view=False)
 
 if __name__ == "__main__":
     mycfg()
