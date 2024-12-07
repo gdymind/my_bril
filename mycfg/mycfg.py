@@ -1,7 +1,7 @@
 import json
 import sys
 from collections import OrderedDict
-
+from graphviz import Digraph
 # note that   'call' is not a terminator,
 # because it will return to the instruction following it
 TERMINATORS = ['ret', 'jmp', 'br']
@@ -38,30 +38,37 @@ def label_blocks(blocks):
         mapping[name] = block
     return mapping
 
-def add_edges(name2block):
-    edges = OrderedDict() # maintain the order of insertion
+def get_cfg(name2block):
+    cfg = OrderedDict() # maintain the order of insertion
     for i, (name, block) in enumerate(name2block.items()):
         last_instr = block[-1]
         if last_instr['op'] in ['jmp', 'br']:
-            edges[name] = last_instr['labels']
+            cfg[name] = last_instr['labels']
         elif last_instr['op'] == 'ret':
-            edges[name] = []
+            cfg[name] = []
         else:
             # add an edge to the next block if it exists
             if i < len(name2block) - 1:
-                edges[name] = [list(name2block.keys())[i+1]]
+                cfg[name] = [list(name2block.keys())[i+1]]
             else:
-                edges[name] = []
-    return edges
+                cfg[name] = []
+    return cfg
 
 def mycfg():
     program =  json.load(sys.stdin)
     for function in program['functions']:
         blocks = list(form_blocks(function['instrs']))
         name2block = label_blocks(blocks)
-        edges = add_edges(name2block)
-        for label, next_labels in edges.items():
+        cfg = get_cfg(name2block)
+        for label, next_labels in cfg.items():
             print(f"{label} -> {next_labels}")
+        
+        # visualize the CFG using graphviz
+        dot = Digraph(comment='CFG')
+        for label, next_labels in cfg.items():
+            for next_label in next_labels:
+                dot.edge(label, next_label)
+        dot.render(f"{function['name']}", view=True)
 
 if __name__ == "__main__":
     mycfg()
