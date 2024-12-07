@@ -1,5 +1,6 @@
 import json
 import sys
+from collections import OrderedDict
 
 # note that   'call' is not a terminator,
 # because it will return to the instruction following it
@@ -32,34 +33,36 @@ def label_blocks(blocks):
             name = block[0]['label']
             block.pop(0)
         else:
-            name = f"BLK_{i}"
+            name = f"BLK{i}"
             i += 1
         mapping[name] = block
     return mapping
 
 def add_edges(name2block):
-    for _, block in name2block.items():
+    edges = OrderedDict() # maintain the order of insertion
+    for i, (name, block) in enumerate(name2block.items()):
         last_instr = block[-1]
-        if last_instr['op'] in TERMINATORS:
-            print(last_instr)
+        if last_instr['op'] in ['jmp', 'br']:
+            edges[name] = last_instr['labels']
+        elif last_instr['op'] == 'ret':
+            edges[name] = []
+        else:
+            # add an edge to the next block if it exists
+            if i < len(name2block) - 1:
+                edges[name] = [list(name2block.keys())[i+1]]
+            else:
+                edges[name] = []
+    return edges
 
 def mycfg():
     program =  json.load(sys.stdin)
     for function in program['functions']:
         blocks = list(form_blocks(function['instrs']))
-        for block in blocks:
-            print(block)
         name2block = label_blocks(blocks)
-        print(name2block)
-        # for name, block in name2block.items():
-        #     print(name)
-        #     for instr in block:
-        #         print(instr)
-        #     last_instr = block[-1]
-        #     # if the last instruction is a jump instruction,
-        #     # we need to add an edge
-        #     if last_instr['op'] == 'jmp':
-        #         print(last_instr)
+        edges = add_edges(name2block)
+        for label, next_labels in edges.items():
+            print(f"{label} -> {next_labels}")
+
 if __name__ == "__main__":
     mycfg()
  
